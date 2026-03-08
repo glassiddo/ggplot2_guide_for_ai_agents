@@ -1,6 +1,6 @@
 # ggplot2 Plotting Guide
 
-*Design rules for clean, publication-ready charts in R. Apply these over ggplot2 defaults — always.* Inspired by Saloni's guide and other sources.
+*Design rules for charts in R. Apply these over ggplot2 defaults.* Inspired by Saloni's guide to data visualization and other great sources.
 
 ---
 
