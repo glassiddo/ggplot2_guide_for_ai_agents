@@ -6,14 +6,12 @@
 
 ## Before You Start — Ask First
 
-Before writing any code, ask the user:
+Before writing any code, make sure that the user has clarified the following, and ask otherwise:
 
 1. **What is the primary question** this chart should answer?
 2. **Absolute or relative?** Should values be counts/totals, or shares/rates/per-capita?
 3. **Highlight or filter?** Are there specific categories, entities, or time periods to emphasize or exclude?
-4. **Many categories or series?** If > 5 series or > 15 categories: ask whether to filter to top N, facet, or group small categories into "Other".
-
-Do not default to a chart type before getting answers to at least #1 and #2.
+4. **Many categories or series?** If many series or categories: ask whether to filter to top N, facet, or group small categories into "Other".
 
 ---
 
