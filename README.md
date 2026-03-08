@@ -1,5 +1,7 @@
 # ggplot2 Plotting Guide
 
+Last modified: 08/03/2026. Still has various issues.
+
 *Design rules for charts in R. Apply these over ggplot2 defaults.* Inspired by Saloni's guide to data visualization and other great sources.
 
 ---
