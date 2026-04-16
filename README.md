@@ -8,7 +8,7 @@ Last modified: 08/03/2026. Still has various issues.
 
 ## Before You Start — Ask First
 
-Before writing any code, make sure that the user has clarified the following, and ask otherwise:
+Before writing any code, make sure that the user has clarified their intentions, the dataset if it is unclear, and ask otherwise questions such as:
 
 1. **What is the primary question** this chart should answer?
 2. **Absolute or relative?** Should values be counts/totals, or shares/rates/per-capita?
@@ -19,7 +19,7 @@ Before writing any code, make sure that the user has clarified the following, an
 
 ## Core Principles
 
-1. **Remove everything that doesn't add information** — no axis titles, no legend titles, no decorative gridlines
+1. **Remove everything that doesn't add information** — no axis titles, no legend titles
 2. **Direct labels vs legend** — use direct labels for line charts with few series (≤8) whenever possible, rather than a legend
 3. **Format all numbers** — never show raw axis numbers without commas, units, or scale
 4. **Prefer simple chart types** — only reach for complex types (Sankey, bump, treemap) when they add clear value
@@ -39,9 +39,8 @@ Before writing any code, make sure that the user has clarified the following, an
 | Part-of-whole / shares | Stacked area or waffle | ≤ 3 segments, totals matter |
 | Relationship between two variables | Scatter | — |
 | Geographic data | Map | — |
-| Counts by category | Lollipop first — ask the user | ask before deciding |
 
-**When uncertain about chart type, ask the user** — describe two or three options in plain language, not code.
+**When uncertain about chart type, ask the user** — describe the main options in plain language, not code.
 
 **Maps are strongly preferred** when data is in geographical units (countries, states) that can be merged using packages like `rnaturalearth`.
 
@@ -89,7 +88,7 @@ ggplot(df, aes(x = value, y = fct_reorder(category, value))) +
 
 - **Always use `ggthemes::theme_clean()`** as the base theme, then layer `theme(...)` on top
 - **Theme ordering is critical:** `theme_clean() + theme(...)` — never the reverse, or your overrides will be silently discarded
-- **Never use the default ggplot2 grey background**
+- **Never use the default ggplot2 grey background**. Use bright colored backgrounds, unless specified otherwise by the user.
 - **Default font:** `base_family = "sans"` or other sans fonts. Do not use `theme_ipsum()` or `hrbrthemes` unless the font is confirmed installed
 
 ```r
@@ -120,7 +119,8 @@ Minimum `base_size = 12` for screen; 13–14 for presentations. Never shrink tic
 
 ### Title
 - **Keep under ~80 characters** — overflow is silently cut off in PNG output; wrap with `\n` if needed
-- **Never use raw variable names** — translate to human-readable form (e.g. `gdp_per_capita_usd_20_v2` → "GDP per capita")
+- If not specified by the user, **ask the user if the title should be descriptive or tell a story**.
+- **Never use raw variable names** — translate to human-readable form (e.g. `gdp_per_capita_usd_20_v2` → "GDP per capita"). If you are uncertain about the translation, ask the user for clarification.
 - Do not narrate the chart's encoding (e.g. "X highlighted")
 
 ```r
@@ -135,23 +135,23 @@ title = "Average annual conflict fatalities by country\nacross focus countries, 
 ```
 
 ### Subtitle
-- Units, date range, and key caveats only. Plain language — write "each panel uses its own vertical scale" not "free_y"; write "log scale" not "log1p". Do not narrate the chart's encoding.
+- Units, date range, and key caveats only. Plain language — e.g., write "log scale" and not "log1p". Do not narrate the chart's encoding.
 
 ### Caption
-- Include `labs(caption = "Source: ...")` with a real, human-readable source name
+- Include `labs(caption = "Source: ...")` with a real, human-readable source name. If you are uncertain about the source, ask the user.
 - **Never invent a source**
 
 ### Category and axis label names
 - **Shorten long labels in the data before plotting** — never rotate them to fit. If the name has no obvious shorter version, ask the user.
 - **Same category, different spelling or form** (e.g. OIL vs oil, "Montgomery Co." vs "Montgomery County"): **ask the user** before normalizing — do not silently collapse categories. Splits produce duplicate bars, empty bars, or wrong legend mapping.
-- Prefer Title Case or Sentence case; avoid ALL CAPS
+- Prefer Title Case or Sentence case; avoid ALL CAPS (e.g., OIL), unless it's an acronym (e.g., USA).
 
 ```r
 # Good — shorten before plotting
 df <- df |> mutate(
   country = case_when(
     country == "United States of America"           ~ "USA",
-    country == "Democratic Republic of the Congo"   ~ "DRC",
+    country == "Democratic Republic of the Congo"   ~ "DR Congo",
     country == "United Kingdom of Great Britain..." ~ "UK",
     .default = country
   )
@@ -178,15 +178,18 @@ df <- df |> mutate(
   scale_y_continuous(labels = scales::label_dollar())                                           # $1.2M
   scale_x_date(date_labels = "%b %Y")                                                          # Jan 2020
   ```
-  - **Never use the deprecated `scales::label_number_si()`** — replace with `label_number(scale_cut = cut_short_scale())`
+- **Never use the deprecated `scales::label_number_si()`** — replace with `label_number(scale_cut = cut_short_scale())`
 - **Variables with very different scales**: use `facet_wrap()` or separate plots — never a dual y-axis
 - **Heavily right-skewed data**: consider a log scale; if used, say so plainly in the subtitle
 - **Factor order**: default alphabetical is usually wrong. Use `fct_reorder(category, value)` for ranked data; `fct_relevel()` for ordinal or natural order (Mon→Sun, Jan→Dec). For time (day of week, month), natural order usually beats ordering by value.
 
 ```r
-df$size    <- fct_relevel(df$size, "Small", "Medium", "Large")  # ordinal
-df$month   <- fct_relevel(df$month, month.abb)                  # Jan→Dec, not by value
-df$country <- fct_reorder(df$country, df$value)                 # ranked
+df <- df |> 
+  mutate(
+    size    = fct_relevel(size, "Small", "Medium", "Large"), # ordinal
+    month   = fct_relevel(month, month.abb),                 # Jan→Dec, not by value
+    country = fct_reorder(country, value)                    # ranked
+  )
 ```
 
 ---
@@ -361,47 +364,3 @@ facet_wrap(~ country, ncol = 3, labeller = label_wrap_gen(width = 20))
 - **Aspect ratio defaults**: 3:2 (width:height) for time series; let geography dictate for maps via `coord_sf()`; use `coord_fixed()` for scatter plots only when x and y are on the same scale
 
 ---
-
-## Gold Standard Template
-
-```r
-library(ggplot2)
-library(scales)
-library(ggrepel)
-library(dplyr)
-
-# Context lines first (grey), then highlight on top (color)
-ggplot(df, aes(x = year, y = value, group = country)) +
-  geom_line(
-    data      = \(d) filter(d, country != "Nigeria"),
-    color     = "grey85", linewidth = 0.5
-  ) +
-  geom_line(
-    data      = \(d) filter(d, country == "Nigeria"),
-    color     = "#D55E00", linewidth = 0.95
-  ) +
-  geom_text_repel(
-    data         = \(d) slice_max(d, year, n = 1, by = country),
-    aes(label    = country),
-    nudge_x      = 1.5,  # in data units; recalibrate per chart
-    direction    = "y",
-    segment.size = 0,
-    hjust        = 0,
-    size         = 3.5
-  ) +
-  scale_x_continuous(expand = expansion(mult = c(0.02, 0.25))) +
-  scale_y_continuous(labels = scales::comma) +
-  theme_clean(base_size = 13, base_family = "sans") +
-  theme(
-    axis.title.x = element_blank(),
-    axis.title.y = element_blank(),
-    legend.position = "none"
-  ) +
-  labs(
-    title    = "Chart title, under 80 characters",
-    subtitle = "Units, date range, and key caveats only",
-    caption  = "Source: Data source name"
-  )
-
-ggsave("output.png", plot = last_plot(), width = 10, height = 6, dpi = 300, bg = "white")
-```
