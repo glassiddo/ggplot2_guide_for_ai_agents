@@ -88,7 +88,7 @@ ggplot(df, aes(x = value, y = fct_reorder(category, value))) +
 
 - **Always use `ggthemes::theme_clean()`** as the base theme, then layer `theme(...)` on top
 - **Theme ordering is critical:** `theme_clean() + theme(...)` — never the reverse, or your overrides will be silently discarded
-- **Never use the default ggplot2 grey background**. Use bright colored backgrounds, unless specified otherwise by the user.
+- **Background:** use `bg = "white"` in `ggsave()` and keep the panel background white. Do not use colored or grey panel backgrounds.
 - **Default font:** `base_family = "sans"` or other sans fonts. Do not use `theme_ipsum()` or `hrbrthemes` unless the font is confirmed installed
 
 ```r
@@ -97,6 +97,9 @@ theme(
   axis.title.x = element_blank(),
   axis.title.y = element_blank(),
   panel.border = element_blank(),
+  panel.background = element_blank(),
+  plot.background = element_blank(),
+  panel.grid.minor = element_blank(),
   legend.background = element_blank(),
   legend.box.background = element_blank()
 )
@@ -174,7 +177,7 @@ df <- df |> mutate(
   ```r
   scale_y_continuous(labels = scales::comma)                                                    # 1,000,000
   scale_y_continuous(labels = scales::label_number(scale_cut = scales::cut_short_scale()))      # 1M, 3.4B
-  scale_y_continuous(labels = scales::percent)                                                  # 42%
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1))                             # 42%  (not 42.0%)
   scale_y_continuous(labels = scales::label_dollar())                                           # $1.2M
   scale_x_date(date_labels = "%b %Y")                                                          # Jan 2020
   ```
@@ -204,20 +207,26 @@ df <- df |>
 - **Line charts with around ≤ 8 series**: use direct end-of-line labels instead of a legend. Label color must match the series color — do not use one color for all labels when series have distinct colors.
 - Place at each series' last available x-value — not the global max if a series ends early
 - Use `geom_text_repel()` with `segment.size = 0`, `hjust = 0`, `direction = "y"`
-  - `nudge_x` is in data units — recalibrate per chart, never copy-paste from another
-  - Expand right margin by ≥ 0.22 to prevent clipping
+  - `nudge_x` is in data units — set it as roughly 1–2% of the x range. Ask the user for the year range if unknown, then compute: e.g. a 2000–2023 chart (span = 23) → `nudge_x ≈ 0.5`; a 2010–2015 chart (span = 5) → `nudge_x ≈ 0.1`. Never copy-paste from another chart.
+  - **Always add `coord_cartesian(clip = "off")`** — without it, labels past the last x value are silently clipped
+  - Reserve space via `plot.margin`, not `expansion(mult = ...)`. `mult` adds a fraction of the data range — gigantic on wide time spans (25% of 60 years = 15 years of blank space). A right margin in points is scale-independent:
   ```r
   geom_text_repel(
-    data         = \(d) slice_max(d, year, n = 1, by = country),
-    aes(label    = country),
-    nudge_x      = 1.5,
-    direction    = "y",
-    segment.size = 0,
-    hjust        = 0,
-    size         = 3.5
+    data          = \(d) slice_max(d, year, n = 1, by = country),  # replace 'year' with your actual x column
+    aes(label     = country),
+    nudge_x       = 0.5,       # ~1–2% of x range in data units; see nudge guidance above
+    direction     = "y",
+    segment.size  = 0,
+    hjust         = 0,
+    size          = 3.5,
+    max.overlaps  = Inf        # never silently drop labels
   ) +
-  scale_x_continuous(expand = expansion(mult = c(0.02, 0.25))) +
-  theme(legend.position = "none")
+  scale_x_continuous(expand = expansion(mult = c(0.02, 0))) +
+  coord_cartesian(clip = "off") +
+  theme(
+    legend.position = "none",
+    plot.margin = margin(5, 80, 5, 5)  # right margin in pts; adjust to label length
+  )
   ```
 - **Stacked area charts**: replace the legend with right-side labels at the midpoint of each final band
 - **Maps and scatter plots**: keep the legend, suppress the title (`name = NULL`), position at `"bottom"`
@@ -227,10 +236,16 @@ df <- df |>
 
 ## Color
 
-- **Qualitative (nominal) data**: use the **Okabe-Ito palette** by default — colorblind-safe, up to 8 groups:
+- **Qualitative (nominal) data**: use the **Okabe-Ito palette** by default — colorblind-safe, up to 8 groups. **On a white background, drop `#F0E442` (yellow) — it is near-invisible — and use caution with `#E69F00` (orange-yellow) on thin lines.** Prefer the 7-color version below for line charts; the full 8-color version is fine for filled bars/areas where contrast is less critical:
   ```r
-  okabe_ito <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442",
+  # Okabe-Ito: 7 colors safe on white (yellow removed)
+  okabe_ito <- c("#E69F00", "#56B4E9", "#009E73",
                  "#0072B2", "#D55E00", "#CC79A7", "#000000")
+
+  # If orange-yellow also lacks contrast on thin lines, substitute a darker orange:
+  okabe_ito <- c("#B07D00", "#56B4E9", "#009E73",
+                 "#0072B2", "#D55E00", "#CC79A7", "#000000")
+
   scale_color_manual(values = okabe_ito, name = NULL)
   scale_fill_manual(values = okabe_ito, name = NULL)
   ```
@@ -276,6 +291,12 @@ Use `geom_col()` on pre-aggregated data — never `geom_bar()` on it. Before usi
 - Use solid lines in different colors in most cases. Different line types fit specific cases (e.g. subcategories within a variable like countries × left/right)
 - Omit `geom_point()` on dense series (≥ 10 observations); add points on sparse series (< 8) or irregular intervals to make gaps visible
 - Use `linewidth = 0.9` for primary series; `linewidth = 0.4–0.6` for grey context lines
+- **NA values break lines** — `geom_line()` draws no segment through an NA. Either drop NAs explicitly, use `na.rm = TRUE`, or pre-fill gaps with interpolated or zero values depending on context:
+  ```r
+  geom_line(na.rm = TRUE)  # silently skips NAs — line jumps the gap
+  # or fill missing x/category combinations with 0 before plotting:
+  df <- df |> complete(year, category, fill = list(value = 0))
+  ```
 - **Sawtooth / jagged line** signals multiple rows per x — aggregate before plotting:
   ```r
   df |> summarise(value = mean(value, na.rm = TRUE), .by = c(year, category))
@@ -291,7 +312,24 @@ Use `geom_col()` on pre-aggregated data — never `geom_bar()` on it. Before usi
 
 - Fill variable must be a **fixed set of categories** with exactly one row per (x, category) — use 0 for missing combinations, not NA
 - Do not use when the category set changes over time — use a fixed set or switch to a line chart
-- Labels at the midpoint of each final band on the right side
+- Labels at the midpoint of each final band on the right side — compute midpoints at the final x-value and place with `geom_text`:
+  ```r
+  label_df <- df |>
+    filter(x == max(x)) |>
+    arrange(category) |>
+    mutate(
+      cumval = cumsum(value),
+      midval = cumval - value / 2
+    )
+
+  geom_text(
+    data  = label_df,
+    aes(x = x, y = midval, label = category, color = category),
+    hjust = 0, nudge_x = nudge, size = 3.5
+  ) +
+  coord_cartesian(clip = "off") +
+  theme(plot.margin = margin(5, 80, 5, 5))
+  ```
 - Stack order follows the fill variable's factor level order — set levels explicitly before plotting
 
 ### Histograms & Distributions
