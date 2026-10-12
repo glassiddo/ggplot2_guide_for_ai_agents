@@ -1,404 +1,237 @@
-# ggplot2 Plotting Guide
+# ggplot2 Plotting Guide for AI Agents
 
-Last modified: 08/03/2026. Still has various issues.
+An opinionated house style for clear charts in R. Use it to make visual and
+analytical decisions; consult current package documentation for syntax.
 
-*Design rules for charts in R. Apply these over ggplot2 defaults.* Inspired by Saloni's guide to data visualization and other great sources.
+This guide began as a distillation of [Saloni Dattani's guide to data
+visualization](https://www.scientificdiscovery.dev/p/salonis-guide-to-data-visualization)
+and developed through repeated review of AI-generated ggplot2 charts. It is a
+working house style, not a comprehensive summary of visualization research.
 
----
+## Decision order
 
-## Before You Start — Ask First
+When rules compete, use this order:
 
-Before writing any code, make sure that the user has clarified their intentions, the dataset if it is unclear, and ask otherwise questions such as:
+1. Represent the data truthfully.
+2. Make the chart's main question easy to answer.
+3. Preserve legibility and accessibility in the intended output.
+4. Apply this house style consistently.
 
-1. **What is the primary question** this chart should answer?
-2. **Absolute or relative?** Should values be counts/totals, or shares/rates/per-capita?
-3. **Highlight or filter?** Are there specific categories, entities, or time periods to emphasize or exclude?
-4. **Many categories or series?** If many series or categories: ask whether to filter to top N, facet, or group small categories into "Other".
+Treat the rules below as strong defaults. Depart from them when the data,
+audience, or requested format gives a concrete reason, and mention material
+departures to the user.
 
----
+## Before plotting
 
-## Core Principles
+Inspect the data and infer reasonable defaults. Ask the user only when an
+unresolved choice would materially change the meaning of the chart, such as:
 
-1. **Remove everything that doesn't add information** — no axis titles, no legend titles
-2. **Direct labels vs legend** — use direct labels for line charts with few series (≤8) whenever possible, rather than a legend
-3. **Format all numbers** — never show raw axis numbers without commas, units, or scale
-4. **Prefer simple chart types** — only reach for complex types (Sankey, bump, treemap) when they add clear value
+- the primary comparison is unclear;
+- counts versus shares, rates, or per-capita values would tell different stories;
+- aggregation requires a substantive weighting choice;
+- filtering, grouping into "Other", or normalizing categories could change the result;
+- uncertainty intervals or sample sizes may materially affect interpretation but
+  cannot be established from the available data;
+- the source, unit, or meaning of a variable cannot be established.
 
----
+Do not interrupt for cosmetic choices that can be revised after rendering.
 
-## Chart Type Selection
+## Core style
 
-**Do not default to bars.** Use the decision table below first.
+- Remove elements that do not add information.
+- Remove axis titles when the title, subtitle, or surrounding context identifies
+  both measures unambiguously. Add one back if omission would make the chart
+  unclear when viewed on its own.
+- Never rotate axis text. Shorten or wrap labels, use horizontal bars, facet, or
+  choose a different layout.
+- Translate raw variable names into concise human-readable labels.
+- Format numbers for their meaning and scale; never show values such as
+  `1000000` when `1,000,000` or `1M` is clearer.
+- Prefer direct labels to a legend when a small number of series can be labeled
+  without collisions.
+- Use a restrained sans-serif type hierarchy.
+- Prefer simple chart types unless a more complex form makes the comparison
+  materially easier.
 
-| Data situation | Default chart | Bar chart only if... |
-|---|---|---|
-| Values over time | `geom_line()` | explicitly asked for |
-| Single ranked variable | Lollipop (`geom_segment` + `geom_point`) | ≤ 6 categories |
-| Distribution across groups | `geom_density_ridges()` or violin | never |
-| Before / after (two time points) | Slope chart | never |
-| Part-of-whole / shares | Stacked area or waffle | ≤ 3 segments, totals matter |
-| Relationship between two variables | Scatter | — |
-| Geographic data | Map | — |
+## Choose the chart from the question
 
-**When uncertain about chart type, ask the user** — describe the main options in plain language, not code.
+| Analytical question | Guidance |
+|---|---|
+| Change over time | Line chart |
+| Ranked values | Lollipop, dot plot, or horizontal bars |
+| Distribution | No universal default: choose based on whether the question concerns range, outliers, modality, density, or group comparison |
+| Two time points | Slope chart or paired dot plot |
+| Part-to-whole | Stacked bar/area for a few stable categories; otherwise consider shares as lines or facets |
+| Relationship between two variables | Scatter plot |
+| Values by geographic unit | Map when spatial pattern matters; ranked or faceted chart when comparison matters |
 
-**Maps are strongly preferred** when data is in geographical units (countries, states) that can be merged using packages like `rnaturalearth`.
+Avoid pie charts and 3D charts. Never use dual y-axes: prefer vertically aligned
+facets with a shared x-axis and separate y-scales, or use separate plots. Avoid
+stacked displays when many segments or subtle differences make comparison
+difficult.
 
-### Lollipop Charts (preferred over bars for ranking)
+## Theme and typography
+
+Use `ggthemes::theme_clean()` as the default base when `ggthemes` is available,
+then apply project-specific overrides afterward. Fall back to a minimal ggplot2
+theme rather than adding a dependency solely for the theme.
+
+## Titles, labels, and sources
+
+- Make the title state the subject or, when clearly supported, the principal
+  finding. Do not overstate exploratory or uncertain patterns.
+- Use the subtitle for units, dates, transformations, and important caveats.
+- Keep titles concise; wrap deliberately when needed.
+- Shorten or wrap long category labels instead of rotating them.
+- Do not silently merge differently spelled categories. Normalize them only when
+  they are known to represent the same thing.
+- Include a human-readable source when it is known. Never invent one.
+- Do not narrate obvious encodings such as "X highlighted in red."
+
+## Axes and scales
+
+- Bar charts must start at zero.
+- Show years as integers and dates with an appropriate date scale.
+- Use natural order for ordinal categories and time units; use magnitude order
+  for ranked comparisons.
+- Use facets or separate plots for variables on incompatible scales.
+- Consider a log scale for strongly right-skewed values and disclose it plainly.
+- Preserve missing-data gaps by default. Do not interpolate or replace missing
+  values with zero without substantive justification.
+
+Common number formats:
 
 ```r
-df |>
-  mutate(category = fct_reorder(category, value)) |>
-  ggplot(aes(x = value, y = category)) +
-  geom_segment(aes(x = 0, xend = value, yend = category),
-               color = "grey70", linewidth = 0.6) +
-  geom_point(color = "#0072B2", size = 3)
-```
+scale_y_continuous(labels = scales::label_comma())
+scale_y_continuous(
+  labels = scales::label_number(scale_cut = scales::cut_short_scale())
+)
 
-### Slope Charts (before / after two time points)
+# Proportions stored as 0–1
+scale_y_continuous(labels = scales::label_percent(accuracy = 1))
 
-```r
-df |>
-  filter(year %in% c(2010, 2023)) |>
-  ggplot(aes(x = factor(year), y = value, group = country)) +
-  geom_line(color = "grey70", linewidth = 0.7) +
-  geom_point(size = 2) +
-  geom_text_repel(data = \(d) filter(d, year == 2023),
-                  aes(label = country), hjust = 0, direction = "y",
-                  nudge_x = 0.15, segment.size = 0)
-```
-
-### Dot Plots / Cleveland Dot Plots (comparing groups on the same measure)
-
-```r
-ggplot(df, aes(x = value, y = fct_reorder(category, value))) +
-  geom_point(aes(color = group), size = 3) +
-  scale_color_manual(values = okabe_ito, name = NULL)
-```
-
-### Never Use
-- **Pie charts** — use an ordered horizontal lollipop or bar instead
-- **3D charts** — use a 2D equivalent
-- **Dual y-axes** — use `facet_wrap()` or separate plots instead
-- **Stacked bars with > 3 segments or subtle differences** — use grouped lines or `facet_wrap()` instead
-
----
-
-## Theme & Appearance
-
-- **Always use `ggthemes::theme_clean()`** as the base theme, then layer `theme(...)` on top
-- **Theme ordering is critical:** `theme_clean() + theme(...)` — never the reverse, or your overrides will be silently discarded
-- **Background:** use `bg = "white"` in `ggsave()` and keep the panel background white. Do not use colored or grey panel backgrounds.
-- **Default font:** `base_family = "sans"` or other sans fonts. Do not use `theme_ipsum()` or `hrbrthemes` unless the font is confirmed installed
-
-```r
-theme_clean(base_size = 13, base_family = "sans") +
-theme(
-  axis.title.x = element_blank(),
-  axis.title.y = element_blank(),
-  panel.border = element_blank(),
-  panel.background = element_blank(),
-  plot.background = element_blank(),
-  panel.grid.minor = element_blank(),
-  legend.background = element_blank(),
-  legend.box.background = element_blank()
+# Percentage points stored as 0–100
+scale_y_continuous(
+  labels = scales::label_number(accuracy = 1, suffix = "%")
 )
 ```
 
-### Font hierarchy
+## Legends and direct labels
 
-| Element | Style | Size |
-|---|---|---|
-| Title | Bold | base + 4pt |
-| Subtitle | Regular | base |
-| Axis tick labels | Regular | base − 1pt |
-| Caption | Regular, grey50 | base − 3pt |
+- Suppress legend titles when the categories are self-explanatory.
+- Direct-label a small number of lines at each series' final observed x-value.
+- Match label color to series color.
+- Reserve space for labels and disable panel clipping when labels extend beyond
+  the plotting panel.
+- Keep legends for maps, dense scatter plots, or displays where direct labels
+  would collide.
 
-Minimum `base_size = 12` for screen; 13–14 for presentations. Never shrink tick label fonts below `rel(0.7)`.
-
----
-
-## Titles & Labels
-
-### Title
-- **Keep under ~80 characters** — overflow is silently cut off in PNG output; wrap with `\n` if needed
-- If not specified by the user, **ask the user if the title should be descriptive or tell a story**.
-- **Never use raw variable names** — translate to human-readable form (e.g. `gdp_per_capita_usd_20_v2` → "GDP per capita"). If you are uncertain about the translation, ask the user for clarification.
-- Do not narrate the chart's encoding (e.g. "X highlighted")
-
-```r
-# Bad — overflows at width = 10
-title = "Average annual conflict fatalities by country across all focus countries 2000–2020"
-
-# Good — shortened
-title = "Average annual conflict fatalities by country, 2000–2020"
-
-# Good — manual line break
-title = "Average annual conflict fatalities by country\nacross focus countries, 2000–2020"
-```
-
-### Subtitle
-- Units, date range, and key caveats only. Plain language — e.g., write "log scale" and not "log1p". Do not narrate the chart's encoding.
-
-### Caption
-- Include `labs(caption = "Source: ...")` with a real, human-readable source name. If you are uncertain about the source, ask the user.
-- **Never invent a source**
-
-### Category and axis label names
-- **Shorten long labels in the data before plotting** — never rotate them to fit. If the name has no obvious shorter version, ask the user.
-- **Same category, different spelling or form** (e.g. OIL vs oil, "Montgomery Co." vs "Montgomery County"): **ask the user** before normalizing — do not silently collapse categories. Splits produce duplicate bars, empty bars, or wrong legend mapping.
-- Prefer Title Case or Sentence case; avoid ALL CAPS (e.g., OIL), unless it's an acronym (e.g., USA).
-
-```r
-# Good — shorten before plotting
-df <- df |> mutate(
-  country = case_when(
-    country == "United States of America"           ~ "USA",
-    country == "Democratic Republic of the Congo"   ~ "DR Congo",
-    country == "United Kingdom of Great Britain..." ~ "UK",
-    .default = country
-  )
-)
-```
-
----
-
-## Axes & Scales
-
-- **Remove axis titles** on every chart — convey what the axis shows via the title or subtitle:
-  ```r
-  # Good - remove axis titles
-  theme(axis.title.x = element_blank(), axis.title.y = element_blank())
-  ```
-- **Never rotate axis text** — `element_text(angle = 45)` is always wrong; use `coord_flip()` or shorten labels in the data instead
-- **Time on the x-axis:** show as character or date, never as decimals (e.g. "2020" not 2020.0). Use `scale_x_date(date_labels = "%Y")` or `scale_x_continuous(breaks = 2018:2025)` for integer years; for month/year use `date_labels = "%b %Y"`
-- **Bar chart y-axis must start at 0** — never truncate the baseline
-- **Always format axis numbers** — never display raw values like `1000000`:
-  ```r
-  scale_y_continuous(labels = scales::comma)                                                    # 1,000,000
-  scale_y_continuous(labels = scales::label_number(scale_cut = scales::cut_short_scale()))      # 1M, 3.4B
-  scale_y_continuous(labels = scales::label_percent(accuracy = 1))                             # 42%  (not 42.0%)
-  scale_y_continuous(labels = scales::label_dollar())                                           # $1.2M
-  scale_x_date(date_labels = "%b %Y")                                                          # Jan 2020
-  ```
-- **Never use the deprecated `scales::label_number_si()`** — replace with `label_number(scale_cut = cut_short_scale())`
-- **Variables with very different scales**: use `facet_wrap()` or separate plots — never a dual y-axis
-- **Heavily right-skewed data**: consider a log scale; if used, say so plainly in the subtitle
-- **Factor order**: default alphabetical is usually wrong. Use `fct_reorder(category, value)` for ranked data; `fct_relevel()` for ordinal or natural order (Mon→Sun, Jan→Dec). For time (day of week, month), natural order usually beats ordering by value.
-
-```r
-df <- df |> 
-  mutate(
-    size    = fct_relevel(size, "Small", "Medium", "Large"), # ordinal
-    month   = fct_relevel(month, month.abb),                 # Jan→Dec, not by value
-    country = fct_reorder(country, value)                    # ranked
-  )
-```
-
----
-
-## Legends & Direct Labels
-
-- **Suppress legend titles** with `name = NULL` on every `scale_*()` call:
-  ```r
-  scale_fill_manual(name = NULL, values = pal)
-  scale_color_viridis_c(name = NULL)
-  ```
-- **Line charts with around ≤ 8 series**: use direct end-of-line labels instead of a legend. Label color must match the series color — do not use one color for all labels when series have distinct colors.
-- Place at each series' last available x-value — not the global max if a series ends early
-- Use `geom_text_repel()` with `segment.size = 0`, `hjust = 0`, `direction = "y"`
-  - `nudge_x` is in data units — set it as roughly 1–2% of the x range. Ask the user for the year range if unknown, then compute: e.g. a 2000–2023 chart (span = 23) → `nudge_x ≈ 0.5`; a 2010–2015 chart (span = 5) → `nudge_x ≈ 0.1`. Never copy-paste from another chart.
-  - **Always add `coord_cartesian(clip = "off")`** — without it, labels past the last x value are silently clipped
-  - Reserve space via `plot.margin`, not `expansion(mult = ...)`. `mult` adds a fraction of the data range — gigantic on wide time spans (25% of 60 years = 15 years of blank space). A right margin in points is scale-independent:
-  ```r
-  geom_text_repel(
-    data          = \(d) slice_max(d, year, n = 1, by = country),  # replace 'year' with your actual x column
-    aes(label     = country),
-    nudge_x       = 0.5,       # ~1–2% of x range in data units; see nudge guidance above
-    direction     = "y",
-    segment.size  = 0,
-    hjust         = 0,
-    size          = 3.5,
-    max.overlaps  = Inf        # never silently drop labels
-  ) +
-  scale_x_continuous(expand = expansion(mult = c(0.02, 0))) +
-  coord_cartesian(clip = "off") +
-  theme(
-    legend.position = "none",
-    plot.margin = margin(5, 80, 5, 5)  # right margin in pts; adjust to label length
-  )
-  ```
-- **Stacked area charts**: replace the legend with right-side labels at the midpoint of each final band
-- **Maps and scatter plots**: keep the legend, suppress the title (`name = NULL`), position at `"bottom"`
-- **Legends with many items** (15+): wrap into columns with `guide_legend(ncol = 4, byrow = TRUE)`
-
----
+Choose nudges and margins from the chart's actual range and label lengths; do
+not copy fixed values blindly.
 
 ## Color
 
-- **Qualitative (nominal) data**: use the **Okabe-Ito palette** by default — colorblind-safe, up to 8 groups. **On a white background, drop `#F0E442` (yellow) — it is near-invisible — and use caution with `#E69F00` (orange-yellow) on thin lines.** Prefer the 7-color version below for line charts; the full 8-color version is fine for filled bars/areas where contrast is less critical:
-  ```r
-  # Okabe-Ito: 7 colors safe on white (yellow removed)
-  okabe_ito <- c("#E69F00", "#56B4E9", "#009E73",
-                 "#0072B2", "#D55E00", "#CC79A7", "#000000")
+- Use color to encode meaning or establish focus, not merely to decorate.
+- Use the Okabe–Ito palette as the qualitative default. On white backgrounds,
+  avoid yellow for thin marks.
+- Do not default to `scale_*_viridis_*()`. Viridis is useful for ordered
+  continuous values, especially when perceptual uniformity matters, but it often
+  adds an unnecessary multi-hue treatment or fits the subject poorly. Choose a
+  sequential or diverging scale that matches the variable and the chart's purpose.
+- Use one highlight color and grey context when one series is the focus.
+- Assign stable, named colors when categories recur across charts.
+- Never reuse one color for different nominal categories in the same figure.
+- Use red for loss or negative outcomes and green for gain or positive outcomes;
+  do not invert that convention.
+- Because red–green differences may be inaccessible, also distinguish important
+  outcomes through labels, position, shape, arrows, or line type.
+- For diverging data, use an explicit, substantively meaningful midpoint.
 
-  # If orange-yellow also lacks contrast on thin lines, substitute a darker orange:
-  okabe_ito <- c("#B07D00", "#56B4E9", "#009E73",
-                 "#0072B2", "#D55E00", "#CC79A7", "#000000")
+## Chart-specific guidance
 
-  scale_color_manual(values = okabe_ito, name = NULL)
-  scale_fill_manual(values = okabe_ito, name = NULL)
-  ```
-- **Sequential (low → high magnitude)**: `scale_fill_distiller(palette = "Blues", direction = 1, name = NULL)`
-- **Diverging (above/below a midpoint)**: `scale_fill_distiller(palette = "RdBu", name = NULL)` — midpoint should map to white or light grey
-- **Continuous**: `scale_fill_viridis_c(name = NULL)`
-- **Focus + context**: one highlight color, all other series in grey:
-  ```r
-  df <- df |> mutate(highlight = ifelse(country == "Nigeria", "Nigeria", "Other"))
-  scale_color_manual(values = c("Nigeria" = "#D55E00", "Other" = "grey80"), guide = "none")
-  ```
-- Never use the same color for two different nominal categories
-- Match color to concept: loss/negative = red, gain/positive = green; never invert
-- **Single-color bars where all bars share one uniform color communicate nothing about the data** — always encode a meaningful variable in the fill
-- **Multiple charts sharing categories**: define a named color vector once and reuse:
-  ```r
-  region_colors <- c("Africa" = "#0072B2", "Asia" = "#D55E00", "Europe" = "#009E73")
-  scale_fill_manual(values = region_colors, name = NULL)
-  ```
-- **Redundant encoding for accessibility** — map both color and shape/linetype:
-  ```r
-  aes(color = group, linetype = group)  # lines
-  aes(color = group, shape = group)     # points
-  ```
+### Bars, dots, and lollipops
 
----
+- Use `geom_col()` for pre-aggregated values.
+- Prefer horizontal layouts when category labels are long.
+- Order by magnitude unless the categories have a natural order.
+- Use a single restrained color when color does not encode another variable;
+  highlight selectively when the analytical question calls for it.
+- Avoid stacked bars with many segments or when individual segment comparisons
+  matter more than totals.
 
-## Chart-Specific Rules
+### Lines
 
-### Bar Charts
+- Use points for sparse or irregular observations; omit them on dense series.
+- Aggregate unintended duplicate rows per x/group before drawing lines.
+- Let missing values break the line unless interpolation is substantively valid.
+- Use faint context lines and emphasize only the series central to the question.
 
-Use `geom_col()` on pre-aggregated data — never `geom_bar()` on it. Before using bars, consider whether a lollipop or dot plot would be cleaner.
+### Scatter plots
 
-- Use `coord_flip()` when labels are long — never rotate text
-- Order bars: `fct_reorder(category, value)` for magnitude; `fct_relevel()` for natural order
-- Use `width = 0.7` in `geom_col()`
-- **Stacked bars**: only when ≤ 3 segments and the total matters. For subtle differences between groups, **ask the user** whether they prefer grouped bars, faceted lines, or shares — do not decide autonomously.
-- For many categories (> 15): filter to top N; **ask the user** how to handle the rest
-- Scale chart height with category count: `height = max(6, n_distinct(df$category) * 0.28)`
+- Add a fitted trend only when estimating a relationship is part of the question.
+- State the method and uncertainty interval when a fit is shown.
+- Use transparency, hex bins, or 2D bins when overplotting obscures density.
+- Use a fixed aspect ratio only when equal x/y units or a 45° reference line has
+  substantive meaning.
 
-### Line Charts
+### Distributions
 
-- Use solid lines in different colors in most cases. Different line types fit specific cases (e.g. subcategories within a variable like countries × left/right)
-- Omit `geom_point()` on dense series (≥ 10 observations); add points on sparse series (< 8) or irregular intervals to make gaps visible
-- Use `linewidth = 0.9` for primary series; `linewidth = 0.4–0.6` for grey context lines
-- **NA values break lines** — `geom_line()` draws no segment through an NA. Either drop NAs explicitly, use `na.rm = TRUE`, or pre-fill gaps with interpolated or zero values depending on context:
-  ```r
-  geom_line(na.rm = TRUE)  # silently skips NAs — line jumps the gap
-  # or fill missing x/category combinations with 0 before plotting:
-  df <- df |> complete(year, category, fill = list(value = 0))
-  ```
-- **Sawtooth / jagged line** signals multiple rows per x — aggregate before plotting:
-  ```r
-  df |> summarise(value = mean(value, na.rm = TRUE), .by = c(year, category))
-  ```
+- There is no universal default. Choose the form from what the viewer needs to
+  compare: observations, range, quartiles, outliers, modality, density, or
+  differences between groups.
+- Histograms expose counts and binning; density and violin plots emphasize shape;
+  box plots emphasize robust summaries; ridgelines and facets support repeated
+  group comparisons. Use these properties to decide rather than applying a fixed
+  hierarchy.
+- Do not obscure small samples behind smooth density estimates.
 
-### Scatter Plots
+### Facets
 
-- Add `geom_smooth()` to show the trend; state the method and interval in the subtitle (e.g. "LOESS smooth, 95% CI")
-- Use `coord_fixed()` only when x and y are on the same scale and a 45° reference line is meaningful — not as a default
-- For > ~500 overlapping points: use `geom_hex()` or `geom_bin2d()`, or reduce `alpha`
-
-### Stacked Area Charts
-
-- Fill variable must be a **fixed set of categories** with exactly one row per (x, category) — use 0 for missing combinations, not NA
-- Do not use when the category set changes over time — use a fixed set or switch to a line chart
-- Labels at the midpoint of each final band on the right side — compute midpoints at the final x-value and place with `geom_text`:
-  ```r
-  label_df <- df |>
-    filter(x == max(x)) |>
-    arrange(category) |>
-    mutate(
-      cumval = cumsum(value),
-      midval = cumval - value / 2
-    )
-
-  geom_text(
-    data  = label_df,
-    aes(x = x, y = midval, label = category, color = category),
-    hjust = 0, nudge_x = nudge, size = 3.5
-  ) +
-  coord_cartesian(clip = "off") +
-  theme(plot.margin = margin(5, 80, 5, 5))
-  ```
-- Stack order follows the fill variable's factor level order — set levels explicitly before plotting
-
-### Histograms & Distributions
-
-- Prefer `ggridges::geom_density_ridges()` for distributions across multiple groups (≤ 8 groups), or use faceted plots.
-- For a single distribution, add a density overlay:
-  ```r
-  geom_histogram(aes(y = after_stat(density)), bins = 30) +
-  geom_density(color = "#0072B2", linewidth = 0.8)
-  ```
-
-### Data prep gotchas
-
-- **`slice_sample(n = ...)`** — `n` must be a constant. Compute it first (`n_samp <- min(8000L, nrow(df))`) then `slice_sample(df, n = n_samp)`; do not use `n = min(8000, n())` inside a pipe.
-
----
-
-## Layout & Facets
-
-- **Too many overlapping lines**: use faint grey context lines (`linewidth = 0.4`) with a few highlighted series (`linewidth = 0.9`) and right-margin labels, or switch to `facet_wrap()`
-- **Facet y-axis scales**: keep identical across panels by default; only use `scales = "free_y"` when within-panel variation is the point — describe it in plain language in the subtitle
-- **Facet strip labels**: for long names use `labeller = label_wrap_gen(width = 20)`; to show the variable name use `labeller = label_both`
-- **Faceted bar charts**: prefer `coord_flip()` so categories move to the y-axis
-
-```r
-facet_wrap(~ country, ncol = 3, labeller = label_wrap_gen(width = 20))
-```
-
----
+- Keep scales common when cross-panel magnitudes matter.
+- Use free scales only when within-panel variation is the intended comparison,
+  and disclose that choice.
+- Wrap long facet labels.
 
 ## Annotations
 
-- **Reference lines and bands** are among the most useful annotations — add when the data has a natural average, threshold, or notable time period:
-  ```r
-  geom_hline(yintercept = mean(df$value, na.rm = TRUE),
-             linetype = "dashed", color = "grey40", linewidth = 0.4)
-
-  geom_vline(xintercept = 2008, linetype = "dotted", color = "grey40", linewidth = 0.4)
-
-  annotate("rect",
-    xmin = as.Date("2020-03-01"), xmax = as.Date("2021-06-01"),
-    ymin = -Inf, ymax = Inf,
-    fill = "grey85", alpha = 0.4)
-  ```
-- **Always label reference elements** — a dashed line with no label is ambiguous
-- **Layer reference elements before the main geom** so they sit behind the data
-- **Do not annotate outliers or spikes automatically** — flag them to the user first and ask whether to label them
-
----
+- Put reference bands and lines behind the data and label what they mean.
+- Add annotations that help answer the main question.
+- Do not automatically explain every outlier or spike; first check whether it is
+  a data-quality issue, expected variation, or a substantively important event.
 
 ## Maps
 
-- **Base map first:** draw geography as context — `fill = "grey88"` boundaries, then data on top. Bare lat/lon points with no base are hard to read. For sparse point data (events), overlay points or bubbles; for dense counts use hex/bin or choropleth.
-- Use `theme_void()` — axes and grid add no information. No box around plot or legend.
-- Always use `coord_sf()` for sf data.
-- **Two-layer pattern**: base `fill = "grey88"`, then data layer for non-NA only; set `na.value = "grey80"` so missing reads as "no data", not white.
-- **Right-skewed fill** (counts): if the variable is suspected to be right-skewed, ask the user and consider `trans = "log1p"` with back-transformed labels: `labels = \(x) scales::comma(round(expm1(x)))`. A map that is mostly one colour is miscalibrated.
-- **Polygon borders:** thin white/grey (`linewidth = 0.15–0.2`) for admin maps; `color = NA` for fine grids so borders don't dominate.
-- Legend at bottom, horizontal: `legend.position = "bottom"`, `legend.key.width = unit(2, "cm")`, `legend.key.height = unit(0.3, "cm")`.
+- Use a map when location or spatial pattern is part of the question, not merely
+  because the data contains country or region names.
+- Use `coord_sf()` for `sf` data and `theme_void()` when axes add no information.
+- Draw geographic context first, then the observed data.
+- Give missing areas an explicit neutral appearance so they do not resemble zero.
+- Keep polygon borders thin; omit borders for very fine grids.
+- For strongly skewed values, consider a justified transformation such as log,
+  log1p, or pseudo-log. Keep legend labels interpretable in the original units
+  and disclose the transformation.
 
----
+## Data integrity
 
-## Export
+Before rendering, verify:
 
-- **Always include `ggsave()`** with `bg = "white"` and `dpi = 300`:
-  ```r
-  ggsave("output.png", plot = last_plot(), width = 10, height = 6, dpi = 300, bg = "white")
-  ```
-- **Use `linewidth =`** not `size =` for lines (ggplot2 ≥ 3.4.0)
-- **Aspect ratio defaults**: 3:2 (width:height) for time series; let geography dictate for maps via `coord_sf()`; use `coord_fixed()` for scatter plots only when x and y are on the same scale
+- the unit of observation;
+- aggregation and weighting choices;
+- duplicate keys at the plotting level;
+- the distinction between zero, missing, and structurally absent values;
+- whether percentages are stored as proportions or percentage points;
+- whether estimates need uncertainty intervals or sample sizes to be interpreted;
+- whether filtering or top-N selection changes the intended claim;
+- whether labels and sources accurately describe the constructed data.
 
----
+Do not solve an analytical ambiguity with a visual styling choice.
+
+## Export and visual check
+
+Export with explicit dimensions and inspect the rendered result.
+
+Check for clipped titles or labels, collisions, unreadable text, weak contrast,
+misleading scales, excessive empty space, and legends that could be replaced by
+clearer labels. Revise the chart after inspection rather than treating successful
+execution as completion.
+
