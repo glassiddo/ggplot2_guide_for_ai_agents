@@ -140,7 +140,7 @@ scale_y_continuous(
 # Proportions stored as 0–1
 scale_y_continuous(labels = scales::label_percent(accuracy = 1))
 
-# Percentage points stored as 0–100
+# Percentages stored as 0–100
 scale_y_continuous(
   labels = scales::label_number(accuracy = 1, suffix = "%")
 )
@@ -192,7 +192,8 @@ not copy fixed values blindly.
 ### Lines
 
 - Use points for sparse or irregular observations; omit them on dense series.
-- Aggregate unintended duplicate rows per x/group before drawing lines.
+- Investigate duplicate x/group rows before drawing lines; aggregate only when
+  repeated observations are substantively valid.
 - Let missing values break the line unless interpolation is substantively valid.
 - Use faint context lines and emphasize only the series central to the question.
 
