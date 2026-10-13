@@ -23,11 +23,13 @@ departures to the user.
 
 ## Collaboration
 
-Work iteratively with the user. Ask when a substantive choice cannot be inferred
-safely, especially the quantity, denominator, aggregation, weighting,
-comparison, or intended audience. After the first render, explain the main
-choices briefly and flag meaningful alternatives that could change the
-interpretation. Do not interrupt for routine cosmetic decisions.
+Work iteratively with the user. For an open-ended request, briefly offer the
+main analytical stories or chart directions and ask which matters before
+plotting. Also ask when the quantity, denominator, aggregation, weighting,
+comparison, audience, or framing cannot be inferred safely. After the first
+render, explain the main choices briefly and ask for feedback before producing
+a larger suite or materially different version. Do not interrupt for routine
+cosmetic decisions.
 
 ## Before plotting
 
@@ -62,6 +64,7 @@ distinction explicit.
 ## Core style
 
 - Remove elements that do not add information.
+- Prefer comparisons by position over comparisons that depend only on color.
 - Remove axis titles when the title, subtitle, or surrounding context identifies
   both measures unambiguously. Add one back if omission would make the chart
   unclear when viewed on its own.
@@ -91,7 +94,8 @@ distinction explicit.
 Avoid pie charts and 3D charts. Never use dual y-axes: prefer vertically aligned
 facets with a shared x-axis and separate y-scales, or use separate plots. Avoid
 stacked displays when many segments or subtle differences make comparison
-difficult.
+difficult. Use heatmaps for dense matrices or when broad patterns are the main
+question; prefer lines or direct comparisons for a small number of time series.
 
 ## Theme and typography
 
@@ -101,13 +105,16 @@ theme rather than adding a dependency solely for the theme.
 
 ## Titles, labels, and sources
 
-- Make the title state the subject or, when clearly supported, the principal
-  finding. Do not overstate exploratory or uncertain patterns.
+- Ask whether the user wants a technically precise title or a more meaningful,
+  editorial title when that choice affects the tone. Either must remain
+  defensible from the displayed measure and uncertainty.
 - Use the subtitle for units, dates, transformations, and important caveats.
 - Keep titles concise; wrap deliberately when needed.
 - Shorten or wrap long category labels instead of rotating them.
 - Do not silently merge differently spelled categories. Normalize them only when
   they are known to represent the same thing.
+- Use human-readable language throughout, including subtitles and notes; do not
+  expose raw variable names unless the intended audience needs them.
 - Include a human-readable source when it is known. Never invent one.
 - Do not narrate obvious encodings such as "X highlighted in red."
 
@@ -221,6 +228,9 @@ not copy fixed values blindly.
 - Add annotations that help answer the main question.
 - Do not automatically explain every outlier or spike; first check whether it is
   a data-quality issue, expected variation, or a substantively important event.
+- Show material uncertainty, but keep it visually subordinate to the comparison
+  unless uncertainty is itself the subject. Do not derive uncertainty for a
+  difference or change without the information needed to do so.
 
 ## Maps
 
@@ -259,5 +269,6 @@ clearer labels. Revise the chart after inspection rather than treating successfu
 execution as completion.
 
 Align titles, plotting panels, legends, and captions to a coherent visual grid.
-Avoid footer elements that appear detached from the chart.
-
+Keep captions brief, wrap them to the plotting width, and align their left and
+right extent with the plot rather than leaving a detached block. Across a suite,
+keep only charts that answer materially different questions.
