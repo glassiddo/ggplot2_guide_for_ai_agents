@@ -23,9 +23,10 @@ departures to the user.
 
 ## Collaboration
 
-Work iteratively with the user. For an open-ended request, briefly offer the
-main analytical stories or chart directions and ask which matters before
-plotting. Also ask when the quantity, denominator, aggregation, weighting,
+Work iteratively with the user. For an open-ended request, briefly offer two or
+three materially different analytical directions, recommend one, and wait for
+the user's choice before writing plotting code or rendering. Also ask when the
+quantity, denominator, aggregation, weighting,
 comparison, audience, or framing cannot be inferred safely. After the first
 render, explain the main choices briefly and ask for feedback before producing
 a larger suite or materially different version. Do not interrupt for routine
@@ -64,6 +65,8 @@ distinction explicit.
 ## Core style
 
 - Remove elements that do not add information.
+- Before showing every category, decide whether the user needs an inventory or
+  a story; ask when that choice is unclear.
 - Prefer comparisons by position over comparisons that depend only on color.
 - Remove axis titles when the title, subtitle, or surrounding context identifies
   both measures unambiguously. Add one back if omission would make the chart
