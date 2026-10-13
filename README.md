@@ -21,6 +21,14 @@ Treat the rules below as strong defaults. Depart from them when the data,
 audience, or requested format gives a concrete reason, and mention material
 departures to the user.
 
+## Collaboration
+
+Work iteratively with the user. Ask when a substantive choice cannot be inferred
+safely, especially the quantity, denominator, aggregation, weighting,
+comparison, or intended audience. After the first render, explain the main
+choices briefly and flag meaningful alternatives that could change the
+interpretation. Do not interrupt for routine cosmetic decisions.
+
 ## Before plotting
 
 Inspect the data and infer reasonable defaults. Ask the user only when an
@@ -34,7 +42,22 @@ unresolved choice would materially change the meaning of the chart, such as:
   cannot be established from the available data;
 - the source, unit, or meaning of a variable cannot be established.
 
-Do not interrupt for cosmetic choices that can be revised after rendering.
+## Analytical choices
+
+Choose the quantity before the chart. Decide whether the question concerns total
+volume, intensity, frequency, rate, share, or change. Raw counts describe total
+burden; comparisons of intensity may require a denominator such as time,
+population, area, exposure, or reporting units.
+
+Check whether groups or observations have unequal exposure. Normalize when those
+differences are not part of the question.
+
+A caption should disclose unavoidable limitations. It is not a substitute for
+choosing a better measure when the necessary information is available.
+
+Ensure titles, legends, annotations, and summaries describe the same
+aggregation. Do not mix totals, rates, and averages without making the
+distinction explicit.
 
 ## Core style
 
@@ -234,4 +257,7 @@ Check for clipped titles or labels, collisions, unreadable text, weak contrast,
 misleading scales, excessive empty space, and legends that could be replaced by
 clearer labels. Revise the chart after inspection rather than treating successful
 execution as completion.
+
+Align titles, plotting panels, legends, and captions to a coherent visual grid.
+Avoid footer elements that appear detached from the chart.
 
